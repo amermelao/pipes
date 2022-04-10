@@ -1,0 +1,18 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - echo Hi
+    silent: true
+  test:
+    cmds:
+      - go test -timeout 10s -v  ./...
+  trace-test:
+    cmds:
+      - go test -race -timeout 30s -v ./...
