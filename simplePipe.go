@@ -30,13 +30,17 @@ func (pipe *SimplePipe[K]) run() {
 
 		if more {
 			pipe.guard.RLock()
+			var wg sync.WaitGroup
 			for _, outPipe := range pipe.out {
+				wg.Add(1)
 				outPipe := outPipe
 				value := value
 				go func() {
 					outPipe <- value
+					wg.Done()
 				}()
 			}
+			wg.Wait()
 			pipe.guard.RUnlock()
 		} else {
 			pipe.guard.RLock()

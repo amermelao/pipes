@@ -1,6 +1,10 @@
 package pipes
 
-import "testing"
+import (
+	"sort"
+	"sync"
+	"testing"
+)
 
 func TestOneWayPipe(t *testing.T) {
 
@@ -87,4 +91,70 @@ func TestMultipleOutOneIn(t *testing.T) {
 		}
 	}
 
+}
+
+func TestMessageOrder(t *testing.T) {
+
+	pipe := NewPipe[int]()
+
+	outPipes := []<-chan int{}
+
+	for cont := 0; cont < 300; cont++ {
+		outPipe := pipe.NewOutput()
+		outPipes = append(outPipes, outPipe)
+	}
+
+	NN := 500
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	t.Log("run producer")
+	go func() {
+
+		for cont := 0; cont < NN; cont++ {
+			err := pipe.Send(cont)
+			if err != nil {
+				panic("fail to send file")
+			}
+		}
+
+		pipe.Close()
+		wg.Done()
+	}()
+
+	results := make([][]int, len(outPipes))
+
+	for consumerID, outPipe := range outPipes {
+		outPipe := outPipe
+		resultID := consumerID
+		wg.Add(1)
+		t.Logf("run consumer: %d", resultID)
+		go func() {
+			for {
+				recievedData, more := <-outPipe
+
+				if !more {
+					wg.Done()
+					break
+				} else {
+					results[resultID] = append(results[resultID], recievedData)
+				}
+
+			}
+		}()
+
+	}
+
+	wg.Wait()
+
+	for consumerID, result := range results {
+		if len(result) != NN {
+			t.Errorf("consumer %d recieved an unexpected amount of data, %d", consumerID, len(results))
+		}
+
+		if !sort.IsSorted(sort.IntSlice(result)) {
+			t.Errorf("consumer %d data revieved in bad order", consumerID)
+		}
+	}
 }
