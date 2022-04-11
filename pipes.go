@@ -11,6 +11,15 @@ type OneInNOut[K any] interface {
 	Close()
 }
 
-func NewPipe[K any]() OneInNOut[K] {
-	return MewSimplePipe[K]()
+type NInOneOut[K any] interface {
+	NewInput() chan<- K
+	Recieve() <-chan K
+}
+
+func NewPipeOneProducer[K any]() OneInNOut[K] {
+	return newSimpleOneProducer[K]()
+}
+
+func NewPipeOneConsumer[K any]() NInOneOut[K] {
+	return newSimpleOneConsmer[K]()
 }

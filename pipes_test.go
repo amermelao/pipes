@@ -8,7 +8,7 @@ import (
 
 func TestOneWayPipe(t *testing.T) {
 
-	pipe := NewPipe[float64]()
+	pipe := NewPipeOneProducer[float64]()
 
 	outPipe := pipe.NewOutput()
 
@@ -47,7 +47,7 @@ func TestOneWayPipe(t *testing.T) {
 
 func TestAddExternalPipe(t *testing.T) {
 
-	pipe := NewPipe[float64]()
+	pipe := NewPipeOneProducer[float64]()
 
 	outPipe := pipe.NewOutput()
 	outExternal := make(chan float64)
@@ -103,7 +103,7 @@ func TestAddExternalPipe(t *testing.T) {
 }
 func TestMultipleOutOneIn(t *testing.T) {
 
-	pipe := NewPipe[float64]()
+	pipe := NewPipeOneProducer[float64]()
 
 	outPipes := []<-chan float64{}
 
@@ -149,9 +149,18 @@ func TestMultipleOutOneIn(t *testing.T) {
 
 }
 
-func TestMessageOrder(t *testing.T) {
+type logTestBench interface {
+	Fatal(args ...any)
+	Fatalf(format string, args ...any)
+	Error(args ...any)
+	Errorf(format string, args ...any)
+	Log(args ...any)
+	Logf(format string, args ...any)
+}
 
-	pipe := NewPipe[int]()
+func messageOrderCase(t logTestBench) {
+
+	pipe := NewPipeOneProducer[int]()
 
 	outPipes := []<-chan int{}
 
@@ -212,5 +221,55 @@ func TestMessageOrder(t *testing.T) {
 		if !sort.IsSorted(sort.IntSlice(result)) {
 			t.Errorf("consumer %d data revieved in bad order", consumerID)
 		}
+	}
+}
+
+func TestMessageOrder(t *testing.T) {
+	messageOrderCase(t)
+}
+
+func BenchmarkMessageOrder(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		messageOrderCase(b)
+	}
+}
+
+func oneConsumerBaseCase(i logTestBench) {
+	pipe := NewPipeOneConsumer[int]()
+
+	msg0, msg1 := 0, 1
+	in0 := pipe.NewInput()
+	in1 := pipe.NewInput()
+
+	go func() {
+		in0 <- msg0
+		in1 <- msg1
+	}()
+
+	response := [2]bool{}
+
+	out0, more0 := <-pipe.Recieve()
+	out1, more1 := <-pipe.Recieve()
+	response[out0] = true
+	response[out1] = true
+	switch {
+	case !more0:
+		i.Fatal("bad pipe")
+	case !more1:
+		i.Fatal("bad pipe")
+	case !response[0]:
+		i.Error("msg0 not arrived")
+	case !response[1]:
+		i.Error("msg1 not arrived")
+	}
+}
+
+func TestOneConsumer(t *testing.T) {
+	oneConsumerBaseCase(t)
+}
+
+func BenchmarkMultipeInOneOut(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		oneConsumerBaseCase(b)
 	}
 }

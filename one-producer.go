@@ -4,7 +4,7 @@ import (
 	"sync"
 )
 
-type SimplePipe[K any] struct {
+type simpleOneProducer[K any] struct {
 	guard sync.RWMutex
 	out   []chan<- K
 
@@ -12,8 +12,8 @@ type SimplePipe[K any] struct {
 	active bool
 }
 
-func MewSimplePipe[K any]() OneInNOut[K] {
-	pipe := SimplePipe[K]{
+func newSimpleOneProducer[K any]() OneInNOut[K] {
+	pipe := simpleOneProducer[K]{
 		out:    make([]chan<- K, 0, 1),
 		in:     make(chan K, 1),
 		active: true,
@@ -23,7 +23,7 @@ func MewSimplePipe[K any]() OneInNOut[K] {
 	return &pipe
 }
 
-func (pipe *SimplePipe[K]) run() {
+func (pipe *simpleOneProducer[K]) run() {
 	for {
 		value, more := <-pipe.in
 
@@ -36,7 +36,7 @@ func (pipe *SimplePipe[K]) run() {
 	}
 }
 
-func (pipe *SimplePipe[K]) sendMessageMultiplePipes(message K) {
+func (pipe *simpleOneProducer[K]) sendMessageMultiplePipes(message K) {
 	pipe.guard.RLock()
 	defer pipe.guard.RUnlock()
 	var wg sync.WaitGroup
@@ -52,7 +52,7 @@ func (pipe *SimplePipe[K]) sendMessageMultiplePipes(message K) {
 	wg.Wait()
 }
 
-func (pipe *SimplePipe[K]) closeOutputPipes() {
+func (pipe *simpleOneProducer[K]) closeOutputPipes() {
 	pipe.guard.Lock()
 	defer pipe.guard.Unlock()
 	for _, outPipe := range pipe.out {
@@ -63,7 +63,7 @@ func (pipe *SimplePipe[K]) closeOutputPipes() {
 	}
 }
 
-func (pipe *SimplePipe[K]) NewOutput() <-chan K {
+func (pipe *simpleOneProducer[K]) NewOutput() <-chan K {
 	tmpOut := make(chan K)
 	pipe.guard.Lock()
 	defer pipe.guard.Unlock()
@@ -72,13 +72,13 @@ func (pipe *SimplePipe[K]) NewOutput() <-chan K {
 	return tmpOut
 }
 
-func (pipe *SimplePipe[K]) Add(newOut chan<- K) {
+func (pipe *simpleOneProducer[K]) Add(newOut chan<- K) {
 	pipe.guard.Lock()
 	defer pipe.guard.Unlock()
 	pipe.out = append(pipe.out, newOut)
 }
 
-func (pipe *SimplePipe[K]) Send(value K) error {
+func (pipe *simpleOneProducer[K]) Send(value K) error {
 	if pipe.active {
 		pipe.in <- value
 		return nil
@@ -88,7 +88,7 @@ func (pipe *SimplePipe[K]) Send(value K) error {
 
 }
 
-func (pipe *SimplePipe[K]) Close() {
+func (pipe *simpleOneProducer[K]) Close() {
 	close(pipe.in)
 	pipe.active = false
 }
