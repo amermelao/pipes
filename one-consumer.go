@@ -16,15 +16,17 @@ func (pipe *simpleOneConsmer[K]) Recieve() <-chan K {
 
 func (pipe *simpleOneConsmer[K]) NewInput() chan<- K {
 	newIn := make(chan K)
-	go func() {
-		for {
-			value, more := <-newIn
-			if !more {
-				break
-			} else {
-				pipe.out <- value
-			}
-		}
-	}()
+	go pipe.transmit(newIn)
 	return newIn
+}
+
+func (pipe *simpleOneConsmer[K]) transmit(newIn <-chan K) {
+	for {
+		value, more := <-newIn
+		if !more {
+			break
+		} else {
+			pipe.out <- value
+		}
+	}
 }
