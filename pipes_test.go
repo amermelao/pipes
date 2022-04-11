@@ -8,7 +8,7 @@ import (
 
 func TestOneWayPipe(t *testing.T) {
 
-	pipe := NewPipeOneProducer[float64]()
+	pipe := NewSplitter[float64]()
 
 	outPipe := pipe.NewOutput()
 
@@ -47,7 +47,7 @@ func TestOneWayPipe(t *testing.T) {
 
 func TestAddExternalPipe(t *testing.T) {
 
-	pipe := NewPipeOneProducer[float64]()
+	pipe := NewSplitter[float64]()
 
 	outPipe := pipe.NewOutput()
 	outExternal := make(chan float64)
@@ -103,7 +103,7 @@ func TestAddExternalPipe(t *testing.T) {
 }
 func TestMultipleOutOneIn(t *testing.T) {
 
-	pipe := NewPipeOneProducer[float64]()
+	pipe := NewSplitter[float64]()
 
 	outPipes := []<-chan float64{}
 
@@ -160,7 +160,7 @@ type logTestBench interface {
 
 func messageOrderCase(t logTestBench) {
 
-	pipe := NewPipeOneProducer[int]()
+	pipe := NewSplitter[int]()
 
 	outPipes := []<-chan int{}
 
@@ -194,7 +194,6 @@ func messageOrderCase(t logTestBench) {
 		outPipe := outPipe
 		resultID := consumerID
 		wg.Add(1)
-		t.Logf("run consumer: %d", resultID)
 		go func() {
 			for {
 				recievedData, more := <-outPipe

@@ -12,7 +12,7 @@ type simpleOneProducer[K any] struct {
 	active bool
 }
 
-func newSimpleOneProducer[K any]() OneInNOut[K] {
+func newSimpleSplitter[K any]() OneInNOut[K] {
 	pipe := simpleOneProducer[K]{
 		out:    make([]chan<- K, 0, 1),
 		in:     make(chan K, 1),
