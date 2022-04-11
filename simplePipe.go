@@ -6,7 +6,7 @@ import (
 
 type SimplePipe[K any] struct {
 	guard sync.RWMutex
-	out   []chan K
+	out   []chan<- K
 
 	in     chan K
 	active bool
@@ -14,7 +14,7 @@ type SimplePipe[K any] struct {
 
 func MewSimplePipe[K any]() OneInNOut[K] {
 	pipe := SimplePipe[K]{
-		out:    make([]chan K, 0, 1),
+		out:    make([]chan<- K, 0, 1),
 		in:     make(chan K, 1),
 		active: true,
 	}
@@ -70,6 +70,12 @@ func (pipe *SimplePipe[K]) NewOutput() <-chan K {
 	pipe.out = append(pipe.out, tmpOut)
 
 	return tmpOut
+}
+
+func (pipe *SimplePipe[K]) Add(newOut chan<- K) {
+	pipe.guard.Lock()
+	defer pipe.guard.Unlock()
+	pipe.out = append(pipe.out, newOut)
 }
 
 func (pipe *SimplePipe[K]) Send(value K) error {

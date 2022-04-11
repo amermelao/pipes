@@ -45,6 +45,62 @@ func TestOneWayPipe(t *testing.T) {
 
 }
 
+func TestAddExternalPipe(t *testing.T) {
+
+	pipe := NewPipe[float64]()
+
+	outPipe := pipe.NewOutput()
+	outExternal := make(chan float64)
+	pipe.Add(outExternal)
+
+	var sendData float64 = 1
+	err := pipe.Send(sendData)
+
+	if err != nil {
+		t.Fatal("fail to send file")
+	}
+
+	recievedData, more := <-outPipe
+
+	if !more {
+		t.Fatal("pipe is closed")
+	}
+
+	if recievedData != sendData {
+		t.Error("wrong data value")
+	}
+
+	recievedData, more = <-outExternal
+
+	if !more {
+		t.Fatal("external pipe is closed")
+	}
+
+	if recievedData != sendData {
+		t.Error("external wrong data value")
+	}
+
+	pipe.Close()
+
+	err = pipe.Send(sendData)
+
+	if err != ErrorIsClosed {
+		t.Fatal("fail send error")
+	}
+
+	_, more = <-outPipe
+
+	if more {
+		t.Error("pipe is alive")
+	}
+
+	_, more = <-outExternal
+
+	if more {
+		t.Error("external pipe is alive")
+	}
+
+}
 func TestMultipleOutOneIn(t *testing.T) {
 
 	pipe := NewPipe[float64]()
