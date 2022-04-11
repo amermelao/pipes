@@ -2,9 +2,10 @@ package pipes
 
 import (
 	"sync"
+	"time"
 )
 
-type simpleOneProducer[K any] struct {
+type simpleSplitter[K any] struct {
 	guard sync.RWMutex
 	out   []chan<- K
 
@@ -12,8 +13,8 @@ type simpleOneProducer[K any] struct {
 	active bool
 }
 
-func newSimpleSplitter[K any]() OneInNOut[K] {
-	pipe := simpleOneProducer[K]{
+func NewSimpleSplitter[K any]() OneInNOut[K] {
+	pipe := simpleSplitter[K]{
 		out:    make([]chan<- K, 0, 1),
 		in:     make(chan K, 1),
 		active: true,
@@ -23,7 +24,7 @@ func newSimpleSplitter[K any]() OneInNOut[K] {
 	return &pipe
 }
 
-func (pipe *simpleOneProducer[K]) run() {
+func (pipe *simpleSplitter[K]) run() {
 	for {
 		value, more := <-pipe.in
 
@@ -36,7 +37,7 @@ func (pipe *simpleOneProducer[K]) run() {
 	}
 }
 
-func (pipe *simpleOneProducer[K]) sendMessageMultiplePipes(message K) {
+func (pipe *simpleSplitter[K]) sendMessageMultiplePipes(message K) {
 	pipe.guard.RLock()
 	defer pipe.guard.RUnlock()
 	var wg sync.WaitGroup
@@ -52,6 +53,78 @@ func (pipe *simpleOneProducer[K]) sendMessageMultiplePipes(message K) {
 	wg.Wait()
 }
 
+func (pipe *simpleSplitter[K]) closeOutputPipes() {
+	pipe.guard.Lock()
+	defer pipe.guard.Unlock()
+	for _, outPipe := range pipe.out {
+		outPipe := outPipe
+		go func() {
+			close(outPipe)
+		}()
+	}
+}
+
+func (pipe *simpleSplitter[K]) NewOutput() <-chan K {
+	tmpOut := make(chan K)
+	pipe.guard.Lock()
+	defer pipe.guard.Unlock()
+	pipe.out = append(pipe.out, tmpOut)
+
+	return tmpOut
+}
+
+func (pipe *simpleSplitter[K]) Add(newOut chan<- K) {
+	pipe.guard.Lock()
+	defer pipe.guard.Unlock()
+	pipe.out = append(pipe.out, newOut)
+}
+
+func (pipe *simpleSplitter[K]) Send(value K) error {
+	if pipe.active {
+		pipe.in <- value
+		return nil
+	} else {
+		return ErrorIsClosed
+	}
+
+}
+
+func (pipe *simpleSplitter[K]) Close() {
+	close(pipe.in)
+	pipe.active = false
+}
+
+func NewSimpleOneProducer[K any]() OneInNOut[K] {
+	pipe := simpleOneProducer[K]{
+		out:    make([]chan<- K, 0, 1),
+		in:     make(chan K, 1),
+		active: true,
+	}
+	go pipe.run()
+	return &pipe
+}
+
+type simpleOneProducer[K any] struct {
+	guard sync.RWMutex
+	out   []chan<- K
+
+	in     chan K
+	active bool
+}
+
+func (pipe *simpleOneProducer[K]) run() {
+	for {
+		value, more := <-pipe.in
+
+		if more {
+			pipe.sendMessage(value)
+		} else {
+			pipe.closeOutputPipes()
+			break
+		}
+	}
+}
+
 func (pipe *simpleOneProducer[K]) closeOutputPipes() {
 	pipe.guard.Lock()
 	defer pipe.guard.Unlock()
@@ -61,6 +134,27 @@ func (pipe *simpleOneProducer[K]) closeOutputPipes() {
 			close(outPipe)
 		}()
 	}
+}
+
+func (pipe *simpleOneProducer[K]) sendMessage(message K) {
+	pipe.guard.RLock()
+	defer pipe.guard.RUnlock()
+
+	if len(pipe.out) < 1 {
+		return
+	}
+
+	for {
+		for _, outPipe := range pipe.out {
+			select {
+			case outPipe <- message:
+				return
+			default:
+			}
+		}
+		time.Sleep(time.Microsecond)
+	}
+
 }
 
 func (pipe *simpleOneProducer[K]) NewOutput() <-chan K {

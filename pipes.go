@@ -15,15 +15,3 @@ type NInOneOut[K any] interface {
 	NewInput() chan<- K
 	Recieve() <-chan K
 }
-
-func NewSplitter[K any]() OneInNOut[K] {
-	return newSimpleSplitter[K]()
-}
-
-func NewPipeOneConsumer[K any]() NInOneOut[K] {
-	return newSimpleOneConsmer[K]()
-}
-
-func NewPipeOneProducer[K any]() OneInNOut[K] {
-	return newSimpleSplitter[K]()
-}

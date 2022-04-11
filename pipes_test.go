@@ -8,7 +8,7 @@ import (
 
 func TestOneWayPipe(t *testing.T) {
 
-	pipe := NewSplitter[float64]()
+	pipe := NewSimpleSplitter[float64]()
 
 	outPipe := pipe.NewOutput()
 
@@ -47,7 +47,7 @@ func TestOneWayPipe(t *testing.T) {
 
 func TestAddExternalPipe(t *testing.T) {
 
-	pipe := NewSplitter[float64]()
+	pipe := NewSimpleSplitter[float64]()
 
 	outPipe := pipe.NewOutput()
 	outExternal := make(chan float64)
@@ -103,7 +103,7 @@ func TestAddExternalPipe(t *testing.T) {
 }
 func TestMultipleOutOneIn(t *testing.T) {
 
-	pipe := NewSplitter[float64]()
+	pipe := NewSimpleSplitter[float64]()
 
 	outPipes := []<-chan float64{}
 
@@ -160,7 +160,7 @@ type logTestBench interface {
 
 func messageOrderCase(t logTestBench) {
 
-	pipe := NewSplitter[int]()
+	pipe := NewSimpleSplitter[int]()
 
 	outPipes := []<-chan int{}
 
@@ -234,7 +234,7 @@ func BenchmarkMessageOrder(b *testing.B) {
 }
 
 func oneConsumerBaseCase(i logTestBench) {
-	pipe := NewPipeOneConsumer[int]()
+	pipe := NewSimpleOneConsmer[int]()
 
 	msg0, msg1 := 0, 1
 	in0 := pipe.NewInput()
@@ -288,4 +288,46 @@ func BenchmarkMultipeInOneOut(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		oneConsumerBaseCase(b)
 	}
+}
+
+func TestMultipleConsumers(t *testing.T) {
+	collector := NewSimpleOneConsmer[int]()
+	producer := NewSimpleOneProducer[int]()
+
+	const NN int = 3
+
+	for range [NN]struct{}{} {
+		collectChanel := collector.NewInput()
+		producer.Add(collectChanel)
+	}
+
+	const messages int = 10
+
+	go func() {
+		for cont := range [messages]struct{}{} {
+			producer.Send(cont)
+		}
+		producer.Close()
+	}()
+
+	result := []int{}
+
+	for value := range collector.Recieve() {
+		result = append(result, value)
+	}
+
+	sort.IntSlice(result).Sort()
+
+	if len(result) != messages {
+		t.Fatalf(
+			"not all messages arrived, expected: %d, got: %d",
+			messages,
+			len(result),
+		)
+	}
+
+	if result[0] != 0 || result[messages-1] != messages-1 {
+		t.Error("bad values, the messages got scrambled")
+	}
+
 }
