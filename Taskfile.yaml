@@ -13,6 +13,6 @@ tasks:
   test:
     cmds:
       - go test -timeout 10s -v  ./...
-  trace-test:
+  test-race:
     cmds:
       - go test -race -timeout 30s -v ./...

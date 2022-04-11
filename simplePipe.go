@@ -24,36 +24,42 @@ func MewSimplePipe[K any]() OneInNOut[K] {
 }
 
 func (pipe *SimplePipe[K]) run() {
-
 	for {
 		value, more := <-pipe.in
 
 		if more {
-			pipe.guard.RLock()
-			var wg sync.WaitGroup
-			for _, outPipe := range pipe.out {
-				wg.Add(1)
-				outPipe := outPipe
-				value := value
-				go func() {
-					outPipe <- value
-					wg.Done()
-				}()
-			}
-			wg.Wait()
-			pipe.guard.RUnlock()
+			pipe.sendMessageMultiplePipes(value)
 		} else {
-			pipe.guard.RLock()
-			for _, outPipe := range pipe.out {
-				outPipe := outPipe
-				go func() {
-					close(outPipe)
-				}()
-			}
-			pipe.guard.RUnlock()
+			pipe.closeOutputPipes()
 			break
 		}
+	}
+}
 
+func (pipe *SimplePipe[K]) sendMessageMultiplePipes(message K) {
+	pipe.guard.RLock()
+	defer pipe.guard.RUnlock()
+	var wg sync.WaitGroup
+	for _, outPipe := range pipe.out {
+		wg.Add(1)
+		outPipe := outPipe
+		value := message
+		go func() {
+			outPipe <- value
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+func (pipe *SimplePipe[K]) closeOutputPipes() {
+	pipe.guard.Lock()
+	defer pipe.guard.Unlock()
+	for _, outPipe := range pipe.out {
+		outPipe := outPipe
+		go func() {
+			close(outPipe)
+		}()
 	}
 }
 
