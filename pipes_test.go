@@ -262,6 +262,23 @@ func oneConsumerBaseCase(i logTestBench) {
 	case !response[1]:
 		i.Error("msg1 not arrived")
 	}
+	close(in1)
+
+	response = [2]bool{}
+	go func() {
+		in0 <- msg0
+	}()
+
+	out0, more0 = <-pipe.Recieve()
+	response[out0] = true
+	switch {
+	case !more0:
+		i.Fatal("bad pipe")
+	case !response[0]:
+		i.Error("msg0 not arrived")
+	case response[1]:
+		i.Error("msg1 not arrived")
+	}
 }
 
 func TestOneConsumer(t *testing.T) {

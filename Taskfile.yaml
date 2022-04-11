@@ -26,3 +26,8 @@ tasks:
   clean:
     cmds:
       - go clean -testcache -cache
+  cover-html:
+    cmds:
+      - rm -f cover*
+      - go test -v -coverprofile cover.out ./...
+      - go tool cover -html=cover.out -o cover.html
