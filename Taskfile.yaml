@@ -16,10 +16,14 @@ tasks:
   benchmark:
       cmds:
         - go test -timeout 10s -bench=. {{.CLI_ARGS}}  ./...
+  fuzz:
+    cmds:
+      - go test -fuzz=. -fuzztime=10s {{.CLI_ARGS}}  ./...
   test-all:
     cmds:
       - task: test
       - task: benchmark
+      - task: fuzz
   test-race:
     cmds:
       - go test -race -timeout 30s {{.CLI_ARGS}} ./...
