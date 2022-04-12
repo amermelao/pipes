@@ -15,3 +15,4 @@ type NInOneOut[K any] interface {
 	NewInput() chan<- K
 	Recieve() <-chan K
 }
+
