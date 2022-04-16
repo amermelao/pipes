@@ -1,10 +1,17 @@
 package pump
 
-import "github.com/amermelao/pipes/conduit"
+import (
+	"github.com/amermelao/pipes/conduit"
+)
 
 type Input[K any, M any] struct {
 	Data   K
 	Return chan M
+}
+
+func NewInput[K any, M any](data K) Input[K, M] {
+	channel := make(chan M)
+	return Input[K, M]{Data: data, Return: channel}
 }
 
 type Process[In any, Out any] func(<-chan Input[In, Out])
@@ -21,7 +28,21 @@ func Apply[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
 	return wrapper
 }
 
-func ApplyN[In any, Out any](p Process[In, Out], n int) Wrapper[In, Out] {
+func ApplyMIn[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
+	pipe := conduit.SimpleOneConsumer[Input[In, Out]]()
+	pipe.NewInput()
+	go p(pipe.Recieve())
+
+	wrapper := func(data Input[In, Out]) Out {
+		inputChannel := pipe.NewInput()
+		inputChannel <- data
+		close(inputChannel)
+		return <-data.Return
+	}
+	return wrapper
+}
+
+func ApplyNOut[In any, Out any](p Process[In, Out], n int) Wrapper[In, Out] {
 
 	input := conduit.SimpleOneProducer[Input[In, Out]]()
 

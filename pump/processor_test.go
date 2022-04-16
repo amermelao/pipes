@@ -1,19 +1,12 @@
 package pump
 
 import (
+	"sync"
 	"testing"
 )
 
 type products struct {
 	A, B float64
-}
-
-func newInput(a, b float64) Input[products, float64] {
-	returnChannel := make(chan float64)
-	return Input[products, float64]{
-		Data:   products{A: a, B: b},
-		Return: returnChannel,
-	}
 }
 
 func multiply(input <-chan Input[products, float64]) {
@@ -28,23 +21,48 @@ func multiply(input <-chan Input[products, float64]) {
 
 func TestProcessor(t *testing.T) {
 	apply := Apply(multiply)
-	if apply(newInput(4, 5)) != 20 {
+	param := products{A: 4, B: 5}
+	if apply(NewInput[products, float64](param)) != 20 {
 		t.Error("bad result")
 	}
 }
 
 func FuzzProcessorMultiProcess(f *testing.F) {
-	apply := ApplyN(multiply, 3)
+	apply := ApplyNOut(multiply, 3)
 
 	f.Add(42.0, 108.0)
 	f.Add(4.0, 18.0)
 	f.Add(34.0, 18.0)
 	f.Add(4.0, 218.0)
 	f.Add(42.0, 18.0)
+
 	f.Fuzz(func(t *testing.T, a, b float64) {
-		if apply(newInput(a, b)) != a*b {
+		param := products{A: a, B: b}
+		if apply(NewInput[products, float64](param)) != a*b {
 			t.Error("bad result")
 		}
 	})
 
+}
+
+func TestParrallel(t *testing.T) {
+	apply := ApplyMIn(multiply)
+
+	var wg sync.WaitGroup
+
+	for cont := 0; cont < 1000; cont++ {
+		wg.Add(1)
+		cont := cont
+		go func() {
+			a := 4 + float64(cont)
+			var b float64 = 5
+			param := products{A: a, B: b}
+			if apply(NewInput[products, float64](param)) != a*b {
+				t.Error("bad result")
+			}
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 }
