@@ -1,6 +1,6 @@
 # https://taskfile.dev
 
-version: '3'
+version: "3"
 
 vars:
   GREETING: Hello, World!
@@ -14,8 +14,8 @@ tasks:
     cmds:
       - go test -timeout 10s {{.CLI_ARGS}}  ./...
   benchmark:
-      cmds:
-        - go test -timeout 10s -bench=. {{.CLI_ARGS}}  ./...
+    cmds:
+      - go test -timeout 10s -bench=. {{.CLI_ARGS}}  ./...
   fuzz:
     cmds:
       - go test -fuzz=. -fuzztime=10s {{.CLI_ARGS}}  ./...
