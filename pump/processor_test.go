@@ -16,7 +16,6 @@ func multiply(input <-chan Input[products, float64]) {
 
 		value.SendBack(total)
 	}
-
 }
 
 func TestProcessor(t *testing.T) {
@@ -42,7 +41,6 @@ func FuzzProcessorMultiProcess(f *testing.F) {
 			t.Error("bad result")
 		}
 	})
-
 }
 
 func TestParrallel(t *testing.T) {
@@ -54,10 +52,10 @@ func TestParrallel(t *testing.T) {
 		wg.Add(1)
 		cont := cont
 		go func() {
-			a := 4 + float64(cont)
-			var b float64 = 5
+			var a, b float64 = 4 + float64(cont), 5
 			param := products{A: a, B: b}
-			if apply(NewInput[products, float64](param)) != a*b {
+			getResult := apply(NewInput[products, float64](param))
+			if getResult() != a*b {
 				t.Error("bad result")
 			}
 			wg.Done()

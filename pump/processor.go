@@ -10,7 +10,7 @@ type Input[K any, M any] struct {
 }
 
 func (i Input[K, M]) SendBack(value M) {
-	i.returnChannel <- value
+	go func() { i.returnChannel <- value }()
 }
 
 func NewInput[K any, M any](data K) Input[K, M] {
@@ -20,6 +20,7 @@ func NewInput[K any, M any](data K) Input[K, M] {
 
 type Process[In any, Out any] func(<-chan Input[In, Out])
 type Wrapper[K any, M any] func(Input[K, M]) M
+type WrapperF[K any, M any] func(Input[K, M]) func() M
 
 func Apply[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
 	inputChannel := make(chan Input[In, Out])
@@ -32,16 +33,16 @@ func Apply[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
 	return wrapper
 }
 
-func ApplyMIn[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
+func ApplyMIn[In any, Out any](p Process[In, Out]) WrapperF[In, Out] {
 	pipe := conduit.SimpleOneConsumer[Input[In, Out]]()
 	pipe.NewInput()
 	go p(pipe.Recieve())
 
-	wrapper := func(data Input[In, Out]) Out {
+	wrapper := func(data Input[In, Out]) func() Out {
 		inputChannel := pipe.NewInput()
 		inputChannel <- data
 		close(inputChannel)
-		return <-data.returnChannel
+		return func() Out { return <-data.returnChannel }
 	}
 	return wrapper
 }
