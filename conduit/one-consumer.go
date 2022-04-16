@@ -1,4 +1,4 @@
-package pipes
+package conduit
 
 import (
 	"sync"
@@ -11,7 +11,7 @@ type simpleOneConsmer[K any] struct {
 	openConnections int
 }
 
-func NewSimpleOneConsmer[K any]() NInOneOut[K] {
+func SimpleOneConsumer[K any]() *simpleOneConsmer[K] {
 	return &simpleOneConsmer[K]{
 		out: make(chan K),
 	}

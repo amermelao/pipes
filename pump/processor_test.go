@@ -1,4 +1,4 @@
-package pipes
+package pump
 
 import (
 	"testing"

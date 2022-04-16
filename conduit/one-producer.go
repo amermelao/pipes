@@ -1,8 +1,10 @@
-package pipes
+package conduit
 
 import (
 	"sync"
 	"time"
+
+	"github.com/amermelao/pipes/pipeserrors"
 )
 
 type simpleSplitter[K any] struct {
@@ -13,7 +15,7 @@ type simpleSplitter[K any] struct {
 	active bool
 }
 
-func NewSimpleSplitter[K any]() OneInNOut[K] {
+func SimpleSplitter[K any]() *simpleSplitter[K] {
 	pipe := simpleSplitter[K]{
 		out:    make([]chan<- K, 0, 1),
 		in:     make(chan K, 1),
@@ -84,7 +86,7 @@ func (pipe *simpleSplitter[K]) Send(value K) error {
 		pipe.in <- value
 		return nil
 	} else {
-		return ErrorIsClosed
+		return pipeserrors.ErrorIsClosed
 	}
 
 }
@@ -94,7 +96,7 @@ func (pipe *simpleSplitter[K]) Close() {
 	pipe.active = false
 }
 
-func NewSimpleOneProducer[K any]() OneInNOut[K] {
+func SimpleOneProducer[K any]() *simpleOneProducer[K] {
 	pipe := simpleOneProducer[K]{
 		out:    make([]chan<- K, 0, 1),
 		in:     make(chan K, 1),
@@ -177,7 +179,7 @@ func (pipe *simpleOneProducer[K]) Send(value K) error {
 		pipe.in <- value
 		return nil
 	} else {
-		return ErrorIsClosed
+		return pipeserrors.ErrorIsClosed
 	}
 
 }

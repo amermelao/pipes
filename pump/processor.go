@@ -1,4 +1,6 @@
-package pipes
+package pump
+
+import "github.com/amermelao/pipes/conduit"
 
 type Input[K any, M any] struct {
 	Data   K
@@ -21,7 +23,7 @@ func Apply[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
 
 func ApplyN[In any, Out any](p Process[In, Out], n int) Wrapper[In, Out] {
 
-	input := NewSimpleOneProducer[Input[In, Out]]()
+	input := conduit.SimpleOneProducer[Input[In, Out]]()
 
 	for range make([]struct{}, n) {
 		go p(input.NewOutput())
