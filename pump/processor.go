@@ -5,13 +5,17 @@ import (
 )
 
 type Input[K any, M any] struct {
-	Data   K
-	Return chan M
+	Data          K
+	returnChannel chan M
+}
+
+func (i Input[K, M]) SendBack(value M) {
+	i.returnChannel <- value
 }
 
 func NewInput[K any, M any](data K) Input[K, M] {
 	channel := make(chan M)
-	return Input[K, M]{Data: data, Return: channel}
+	return Input[K, M]{Data: data, returnChannel: channel}
 }
 
 type Process[In any, Out any] func(<-chan Input[In, Out])
@@ -23,7 +27,7 @@ func Apply[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
 
 	wrapper := func(data Input[In, Out]) Out {
 		inputChannel <- data
-		return <-data.Return
+		return <-data.returnChannel
 	}
 	return wrapper
 }
@@ -37,7 +41,7 @@ func ApplyMIn[In any, Out any](p Process[In, Out]) Wrapper[In, Out] {
 		inputChannel := pipe.NewInput()
 		inputChannel <- data
 		close(inputChannel)
-		return <-data.Return
+		return <-data.returnChannel
 	}
 	return wrapper
 }
@@ -52,7 +56,7 @@ func ApplyNOut[In any, Out any](p Process[In, Out], n int) Wrapper[In, Out] {
 
 	wrapper := func(data Input[In, Out]) Out {
 		input.Send(data)
-		return <-data.Return
+		return <-data.returnChannel
 	}
 	return wrapper
 }

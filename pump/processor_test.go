@@ -14,7 +14,7 @@ func multiply(input <-chan Input[products, float64]) {
 		argmuments := value.Data
 		total := argmuments.A * argmuments.B
 
-		value.Return <- total
+		value.SendBack(total)
 	}
 
 }
